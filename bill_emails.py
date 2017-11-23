@@ -1,5 +1,8 @@
 import requests
 import json
+import time
+
+SLEEP_INTERVAL=5
 
 class EssentialsAPI:
     def __init__(self):
@@ -39,7 +42,14 @@ class EssentialsAPI:
         params_payload = {'businessId': businessId}
 
         print 'Sending get_business_details request for business %s...' % businessId
-        response = requests.get(self.base_url, headers=headers, params=params_payload)
+        try:
+            response = requests.get(self.base_url, headers=headers, params=params_payload)
+        except UnicodeEncodeError as e:
+            print "Encountered error %s" % e
+            print "sleeping %s seconds before retrying" % SLEEP_INTERVAL
+            time.sleep(SLEEP_INTERVAL)
+            response = requests.get(self.base_url, headers=headers, params=params_payload)
+
         if response.status_code == 200:
             print 'Request successful'
             return response.content
@@ -49,32 +59,41 @@ class EssentialsAPI:
             print 'Response text: %s' % response.text
         print ""
 
+
 def extract_details_businesses(fd, request_payload):
     payload = json.loads(request_payload)
     for business in payload:
         details = dict()
         details["businessId"] = business["businessId"]
-        details["companyName"] = business["companyName"]
-        details["serialNumber"] = business["serialNumber"]
-        details["emails"] = map(lambda u: u['email'], business["users"])
+        details["companyName"] = business["companyName"].encode('utf8')
+        details["serialNumber"] = business["serialNumber"].encode('utf8')
+        details["status"] = business["status"].encode('utf8')
+        details["emails"] = map(lambda u: u['email'].encode('utf8'), business["users"])
 
-        # write_to_file(fd, details)
-        print_to_screen(details)
+        try:
+            write_to_file(fd, details)
+            # print_to_screen(details)
+        except UnicodeEncodeError as e:
+            print "Encountered error: %s" % e
+            print details
+            exit(-1)
 
 def write_to_file(fd, business_details):
-    fd.write('%s,%s,%s,%s\n'% (business_details['businessId'],
+    fd.write('%s,%s,%s,%s,%s\n'% (business_details['businessId'],
                                business_details["companyName"],
                                business_details["serialNumber"],
-                               ','.join(business_details['emails'])))
+                               business_details['status'],
+                               ",".join(business_details['emails'])))
 
 def print_to_screen(business_details):
-    fd.write('%s,%s,%s,%s\n'% (business_details['businessId'],
+    print '%s,%s,%s,%s,%s\n'% (business_details['businessId'],
                                business_details["companyName"],
                                business_details["serialNumber"],
-                               ','.join(business_details['emails'])))
+                               business_details['status'],
+                               ",".join(business_details['emails']))
 
 def load_business_ids():
-    input_file = 'businesses.txt'
+    input_file = 'au_businesses.txt'
     f = open(input_file, 'r')
     lines = f.readlines()
     if len(lines) <= 1:
