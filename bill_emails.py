@@ -66,7 +66,10 @@ def extract_details_businesses(fd, request_payload):
         details = dict()
         details["businessId"] = business["businessId"]
         details["companyName"] = business["companyName"].encode('utf8')
-        details["serialNumber"] = business["serialNumber"].encode('utf8')
+        try:
+            details["serialNumber"] = business["serialNumber"].encode('utf8')
+        except AttributeError:
+            print "couldn't read attribute serialNumber"
         details["status"] = business["status"].encode('utf8')
         details["emails"] = map(lambda u: u['email'].encode('utf8'), business["users"])
 
@@ -78,19 +81,25 @@ def extract_details_businesses(fd, request_payload):
             print details
             exit(-1)
 
+def get_attr_from_details(details, key):
+    if details.has_key(key):
+        return details[key]
+    else:
+        return None
+
 def write_to_file(fd, business_details):
-    fd.write('%s,%s,%s,%s,%s\n'% (business_details['businessId'],
-                               business_details["companyName"],
-                               business_details["serialNumber"],
-                               business_details['status'],
-                               ",".join(business_details['emails'])))
+    fd.write('%s,%s,%s,%s,%s\n'% (get_attr_from_details(business_details, 'businessId'),
+                               get_attr_from_details(business_details, "companyName"),
+                               get_attr_from_details(business_details, 'serialNumber'),
+                               get_attr_from_details(business_details, 'status'),
+                               ",".join(get_attr_from_details(business_details, 'emails'))))
 
 def print_to_screen(business_details):
-    print '%s,%s,%s,%s,%s\n'% (business_details['businessId'],
-                               business_details["companyName"],
-                               business_details["serialNumber"],
-                               business_details['status'],
-                               ",".join(business_details['emails']))
+    print '%s,%s,%s,%s,%s\n'% (get_attr_from_details(business_details, 'businessId'),
+                               get_attr_from_details(business_details, "companyName"),
+                               get_attr_from_details(business_details, 'serialNumber'),
+                               get_attr_from_details(business_details, 'status'),
+                               ",".join(get_attr_from_details(business_details, 'emails')))
 
 def load_business_ids():
     input_file = 'au_businesses.txt'
